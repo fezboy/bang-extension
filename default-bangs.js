@@ -124,5 +124,10 @@ const DEFAULT_BANGS = [
     trigger: "giphy",
     url: "https://giphy.com/search/{{{s}}}",
     description: "Giphy"
+  },
+  {
+    trigger: "digikey",
+    url: "https://www.digikey.com/en/products/result?keywords={{{s}}}",
+    description: "Digikey"
   }
 ];
