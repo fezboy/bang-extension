@@ -2,9 +2,7 @@
 
 let bangsCache = {};
 
-// Initialize extension on install
-browser.runtime.onInstalled.addListener(async (details) => {
-  if (details.reason === 'install') {
+async function initializeBangs() {
     // First install - populate with default bangs
     const bangsObject = {};
     DEFAULT_BANGS.forEach(bang => {
@@ -13,6 +11,13 @@ browser.runtime.onInstalled.addListener(async (details) => {
     await browser.storage.local.set({ bangs: bangsObject });
     bangsCache = bangsObject;
     console.log('Custom Bangs: Initialized with default bangs');
+}
+
+
+// Initialize extension on install
+browser.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install') {
+    await initializeBangs();
   } else {
     // Load existing bangs
     await loadBangs();
@@ -21,10 +26,28 @@ browser.runtime.onInstalled.addListener(async (details) => {
 
 // Load bangs from storage into cache
 async function loadBangs() {
+  // If bangs were lost, re-initialize bangs
+  const keys = await browser.storage.local.getKeys();
+  if (!keys.includes("bangs")) {
+    await initializeBangs();
+    return;
+  }
   const result = await browser.storage.local.get('bangs');
   bangsCache = result.bangs || {};
   console.log('Custom Bangs: Loaded', Object.keys(bangsCache).length, 'bangs');
 }
+
+// Listen for reset request, and reinitialze if needed
+browser.storage.onChanged.addListener(async (changes, areaName) => {
+  if (areaName === 'session' && changes.reset_bangs) {
+    if (changes.reset_bangs.newValue == true) {
+      console.log('Custom Bangs: Reset Bangs!')
+      await initializeBangs();
+      // Tells Options page that re-initialization finished
+      await browser.storage.session.set({reset_bangs: false});
+    }
+  }
+});
 
 // Listen for storage changes to update cache
 browser.storage.onChanged.addListener((changes, areaName) => {

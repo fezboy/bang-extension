@@ -277,18 +277,32 @@ importFileInput.addEventListener('change', async (e) => {
   importFileInput.value = '';
 });
 
+function storageChangeSignal(storage_area, key, desired_value) {
+  return new Promise((resolve) => {
+    const listener = (changes, areaName) => {
+      if (areaName === storage_area && changes[key] &&
+          changes[key].newValue === desired_value) {
+        browser.storage.onChanged.removeListener(listener)
+        resolve();
+      }
+    }
+
+    browser.storage.onChanged.addListener(listener);
+  });
+}
+
 // Reset to default bangs
 async function resetToDefaults() {
   const confirmed = confirm('Reset all bangs to defaults? This will delete all custom bangs!');
   if (!confirmed) return;
   
-  // Load default bangs (we need to fetch from background)
-  // For now, we'll redirect to a fresh install state
-  await browser.storage.local.clear();
+  // Tell background to load default bangs
+  await browser.storage.session.set({reset_bangs: true});
   
-  // Trigger a reload which will cause background.js to reinitialize
-  alert('Bangs reset to defaults! Please reload the page.');
-  location.reload();
+  // Wait for the background to indicate that it's reset the bangs
+  await storageChangeSignal("session", "reset_bangs", false);
+  
+  await loadBangs();
 }
 
 // Event listeners
